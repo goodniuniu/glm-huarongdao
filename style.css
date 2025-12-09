@@ -211,3 +211,234 @@ button[onclick*="solveAndShow"]:hover {
     backdrop-filter: blur(5px);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* ========================================
+   MOBILE RESPONSIVE DESIGN
+   ======================================== */
+
+/* 移动设备横屏和小屏幕 */
+@media screen and (max-width: 480px), (max-height: 600px) {
+    body {
+        padding: 0;
+        background-attachment: fixed;
+    }
+
+    .game-container {
+        padding: 10px;
+        width: 100%;
+        max-width: 100vw;
+    }
+
+    h1 {
+        font-size: 2rem;
+        margin-bottom: 20px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+
+    .game-board {
+        width: 280px; /* 4 * 70 = 280px */
+        height: 350px; /* 5 * 70 = 350px */
+        background: rgba(44, 62, 80, 0.9);
+        border: 2px solid #34495e;
+        border-radius: 12px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        margin: 0 auto;
+        touch-action: none; /* 防止触摸滚动干扰 */
+    }
+
+    .block {
+        border-radius: 10px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+        font-size: 12px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+        border: 2px solid rgba(255,255,255,0.15);
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+
+    .block:active {
+        transform: scale(0.95);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        transition: all 0.1s ease;
+    }
+
+    .block.selected {
+        border-color: #f39c12;
+        box-shadow: 0 0 18px rgba(243, 156, 18, 0.6);
+        animation: mobilePulse 1s infinite alternate;
+    }
+
+    .block.auto-solving {
+        border-color: #e74c3c;
+        box-shadow: 0 0 22px rgba(231, 76, 60, 0.8);
+        animation: mobileSolvePulse 0.8s infinite alternate;
+    }
+
+    @keyframes mobilePulse {
+        from {
+            transform: scale(1);
+            border-width: 2px;
+        }
+        to {
+            transform: scale(1.03);
+            border-width: 3px;
+        }
+    }
+
+    @keyframes mobileSolvePulse {
+        from {
+            transform: scale(1);
+            border-width: 3px;
+        }
+        to {
+            transform: scale(1.04);
+            border-width: 4px;
+        }
+    }
+
+    .controls {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 0 10px;
+        max-width: 280px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    button {
+        padding: 14px 16px;
+        font-size: 14px;
+        min-height: 48px; /* 苹果推荐的最小触摸目标 */
+        border-radius: 10px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        transition: all 0.2s ease;
+    }
+
+    button:active {
+        transform: scale(0.96);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    #undoButton {
+        background: rgba(241, 196, 15, 0.85);
+        grid-column: span 2; /* 占据整行 */
+    }
+
+    button[onclick*="solveAndShow"] {
+        background: rgba(231, 76, 60, 0.85);
+    }
+
+    .moves-counter {
+        margin-top: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .keyboard-hints {
+        margin-top: 12px;
+        font-size: 0.85rem;
+        padding: 0 10px;
+    }
+
+    .keyboard-hints small {
+        padding: 8px 14px;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+
+    /* 胜利弹窗移动端适配 */
+    .victory-content {
+        background: linear-gradient(135deg, #2c3e50, #34995e);
+        padding: 30px 20px;
+        border-radius: 15px;
+        margin: 20px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+        max-width: 90vw;
+    }
+
+    .victory-content h2 {
+        font-size: 2rem;
+        margin-bottom: 15px;
+    }
+
+    .victory-content p {
+        font-size: 1.1rem;
+        margin-bottom: 20px;
+    }
+
+    .victory-content button {
+        padding: 14px 24px;
+        font-size: 16px;
+        min-width: 120px;
+        margin-top: 10px;
+    }
+}
+
+/* 超小屏幕设备 (iPhone SE 等) */
+@media screen and (max-width: 320px) {
+    .game-board {
+        width: 240px; /* 4 * 60 = 240px */
+        height: 300px; /* 5 * 60 = 300px */
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    .block {
+        font-size: 10px;
+    }
+
+    button {
+        padding: 12px 14px;
+        font-size: 13px;
+    }
+}
+
+/* 横屏模式优化 */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .game-container {
+        padding: 5px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-around;
+        max-width: 100vw;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+        margin: 0 10px;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+    }
+
+    .game-container > :not(h1) {
+        flex: 1;
+    }
+
+    .game-board {
+        margin: 0;
+        transform: scale(0.9);
+    }
+
+    .controls {
+        margin-top: 10px;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    button {
+        padding: 10px 12px;
+        font-size: 12px;
+        min-height: 40px;
+    }
+}

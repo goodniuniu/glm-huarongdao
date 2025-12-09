@@ -1,4 +1,15 @@
 const GRID_SIZE = 80;
+const MOBILE_GRID_SIZE = 70; // Mobile will use smaller grid but more of the screen
+
+// 获取当前设备的基础网格大小
+function getCurrentGridSize() {
+    if (window.innerWidth <= 320) {
+        return 60; // 超小屏幕 (iPhone SE)
+    } else if (window.innerWidth <= 480) {
+        return MOBILE_GRID_SIZE; // 标准移动设备
+    }
+    return GRID_SIZE; // 桌面
+}
 const BOARD_WIDTH = 4;
 const BOARD_HEIGHT = 5;
 
@@ -170,14 +181,25 @@ function render() {
     const board = document.getElementById('gameBoard');
     board.innerHTML = '';
 
+    const currentGridSize = getCurrentGridSize();
+
+    // 动态设置棋盘大小
+    const boardWidth = BOARD_WIDTH * currentGridSize;
+    const boardHeight = BOARD_HEIGHT * currentGridSize;
+    board.style.width = `${boardWidth}px`;
+    board.style.height = `${boardHeight}px`;
+
+    // 移动端使用更小的间距
+    const blockGap = window.innerWidth <= 480 ? 6 : 10;
+
     gameState.blocks.forEach(block => {
         const blockElement = document.createElement('div');
         blockElement.className = `block ${block.type}`;
         blockElement.setAttribute('data-block-id', block.id);
-        blockElement.style.left = `${block.x * GRID_SIZE}px`;
-        blockElement.style.top = `${block.y * GRID_SIZE}px`;
-        blockElement.style.width = `${block.width * GRID_SIZE - 10}px`;
-        blockElement.style.height = `${block.height * GRID_SIZE - 10}px`;
+        blockElement.style.left = `${block.x * currentGridSize}px`;
+        blockElement.style.top = `${block.y * currentGridSize}px`;
+        blockElement.style.width = `${block.width * currentGridSize - blockGap}px`;
+        blockElement.style.height = `${block.height * currentGridSize - blockGap}px`;
         blockElement.style.background = `linear-gradient(135deg, ${block.color}, ${adjustColor(block.color, -20)})`;
         blockElement.textContent = block.name;
         blockElement.onclick = () => handleBlockClick(block.id);
@@ -618,6 +640,11 @@ function solveAndShow() {
 
 // 键盘事件监听
 document.addEventListener('keydown', handleKeyPress);
+
+// 窗口大小变化监听（处理手机旋转）
+window.addEventListener('resize', () => {
+    render();
+});
 
 // 初始化游戏
 render();
