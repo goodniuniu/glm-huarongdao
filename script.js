@@ -328,68 +328,97 @@ function applyMove(blocks, move) {
 
 function solveGame() {
     const startTime = performance.now();
-    const initialState = deepCopyBlocks(gameState.blocks);
-    const initialStateKey = stateToString(initialState);
 
-    // BFS队列：存储 {blocks: 状态, path: 移动路径}
-    const queue = [{
-        blocks: initialState,
-        path: []
-    }];
+    // 1. 准备初始状态
+    const initialBlocks = deepCopyBlocks(gameState.blocks);
+    const initialKey = stateToString(initialBlocks);
 
-    // visited集合：存储已访问的状态
-    const visited = new Set([initialStateKey]);
-    let steps = 0;
-    const maxSteps = 50000; // 增加上限以支持标准华容道求解
+    // 2. 核心数据结构优化
+    // queue: 只存储当前的方块状态，不存储路径，节省巨大的内存
+    const queue = [initialBlocks];
+    let head = 0; // 【关键优化】使用指针代替 queue.shift()，速度提升 O(n) 倍
 
-    console.log('🧩 开始华容道求解...');
+    // predecessor: 记录"族谱" Map<StateKey, { parentKey, move }>
+    // 用于找到终点后倒推路径
+    const predecessor = new Map();
+    predecessor.set(initialKey, null);
 
-    while (queue.length > 0 && steps < maxSteps) {
-        steps++;
+    // 3. 设置安全阈值
+    // 横刀立马通常需要 20,000+ 个状态探索，给够 200,000 防止意外
+    const maxIterations = 200000;
 
-        // 取出队列头部状态
-        const current = queue.shift();
+    console.log('🚀 启动高性能 BFS 求解器...');
 
-        // 检查是否达到胜利条件
-        if (isVictoryState(current.blocks)) {
-            const endTime = performance.now();
-            const duration = ((endTime - startTime) / 1000).toFixed(2);
-            console.log(`🎉 找到解决方案！步骤数: ${current.path.length}, 耗时: ${duration}秒`);
-            return current.path;
+    while (head < queue.length) {
+        // 安全中断
+        if (head > maxIterations) {
+            console.log(`❌ 超出最大计算步数 (${maxIterations})，停止搜索。`);
+            return null;
         }
 
-        // 生成所有可能的移动
-        const possibleMoves = generateMoves(current.blocks);
+        // 【关键优化】O(1) 复杂度取出当前状态
+        const currentBlocks = queue[head++];
+        const currentKey = stateToString(currentBlocks);
+
+        // 4. 检查胜利
+        if (isVictoryState(currentBlocks)) {
+            const endTime = performance.now();
+            console.log(`🎉 胜利！搜索状态总数: ${head}, 队列剩余: ${queue.length - head}`);
+
+            // 5. 倒推路径 (Backtracking)
+            const path = reconstructPath(predecessor, currentKey);
+
+            const duration = ((endTime - startTime) / 1000).toFixed(2);
+            console.log(`✅ 最优解步数: ${path.length}, 耗时: ${duration}秒`);
+            return path;
+        }
+
+        // 6. 生成新状态
+        const possibleMoves = generateMoves(currentBlocks);
 
         for (const move of possibleMoves) {
-            // 应用移动生成新状态
-            const newBlocks = applyMove(current.blocks, move);
+            const newBlocks = applyMove(currentBlocks, move);
             const newStateKey = stateToString(newBlocks);
 
-            // 如果新状态未被访问过
-            if (!visited.has(newStateKey)) {
-                visited.add(newStateKey);
-                queue.push({
-                    blocks: newBlocks,
-                    path: [...current.path, {
+            // 如果是全新的状态（未在族谱中记录过）
+            if (!predecessor.has(newStateKey)) {
+                // 记录这个状态是从哪来的，以及怎么走过来的
+                predecessor.set(newStateKey, {
+                    parentKey: currentKey,
+                    move: {
                         blockId: move.blockId,
-                        direction: move.direction
-                    }]
+                        direction: move.direction,
+                        newX: move.newX, // 预存坐标供演示使用
+                        newY: move.newY
+                    }
                 });
+
+                // 加入队列
+                queue.push(newBlocks);
             }
         }
     }
 
-    const endTime = performance.now();
-    const duration = ((endTime - startTime) / 1000).toFixed(2);
+    console.log('❌ 队列已空，无解。');
+    return null;
+}
 
-    if (steps >= maxSteps) {
-        console.log(`⏱️ 求解超时，已探索${maxSteps}步，耗时: ${duration}秒`);
-    } else {
-        console.log(`❌ 未找到解决方案，耗时: ${duration}秒`);
+// 【新增】辅助函数：通过族谱倒推路径
+function reconstructPath(predecessorMap, endKey) {
+    const path = [];
+    let currentKey = endKey;
+
+    while (true) {
+        const record = predecessorMap.get(currentKey);
+        if (!record) break; // 到达起点（起点没有 parent）
+
+        // 因为是倒推的，所以加入到数组头部，或者最后 reverse
+        path.push(record.move);
+        currentKey = record.parentKey;
     }
 
-    return null; // 未找到解决方案
+    // 翻转数组，使其变为 起点 -> 终点 的顺序
+    return path.reverse();
 }
 
 function showHint() {
