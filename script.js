@@ -22,7 +22,9 @@ let gameState = {
     ],
     selectedBlock: null,
     moves: 0,
-    history: [] // 存储历史状态
+    history: [], // 存储历史状态
+    isAutoSolving: false, // 是否正在自动求解
+    autoSolveTimeout: null // 自动求解定时器
 };
 
 function isPositionOccupied(x, y, excludeBlockId = null) {
@@ -170,6 +172,7 @@ function render() {
     gameState.blocks.forEach(block => {
         const blockElement = document.createElement('div');
         blockElement.className = `block ${block.type}`;
+        blockElement.setAttribute('data-block-id', block.id);
         blockElement.style.left = `${block.x * GRID_SIZE}px`;
         blockElement.style.top = `${block.y * GRID_SIZE}px`;
         blockElement.style.width = `${block.width * GRID_SIZE - 10}px`;
@@ -211,6 +214,11 @@ function updateMovesDisplay() {
 }
 
 function resetGame() {
+    // 停止自动求解
+    if (gameState.isAutoSolving) {
+        stopAutoSolve();
+    }
+
     gameState.moves = 0;
     gameState.selectedBlock = null;
     gameState.history = []; // 清空历史记录
@@ -386,7 +394,165 @@ function solveGame() {
 }
 
 function showHint() {
-    alert('🎮 游戏控制：\n\n• 鼠标点击滑块选中，再次点击移动\n• 方向键控制：↑↓←→ 移动选中的滑块\n• 撤销操作：点击"↶ 回退"按钮 或按 Ctrl+Z (Mac: Cmd+Z)\n• 重新开始：点击"重新开始"按钮\n\n🎯 游戏目标：把曹操（红色大方块）移到底部中间位置！');
+    if (gameState.isAutoSolving) {
+        // 如果正在自动求解，则停止
+        stopAutoSolve();
+        return;
+    }
+
+    alert('🧩 正在计算最优解，请稍候...\n\n这将使用BFS算法找到当前局面的最短解决方案。');
+
+    // 使用setTimeout避免阻塞UI
+    setTimeout(() => {
+        const solution = solveGame();
+
+        if (solution && solution.length > 0) {
+            startAutoSolve(solution);
+        } else {
+            alert('❌ 无法找到解决方案或求解超时。\n\n这可能意味着当前状态无法解决，或者需要更多计算时间。');
+        }
+    }, 100);
+}
+
+function startAutoSolve(solution) {
+    gameState.isAutoSolving = true;
+    updateButtonStates();
+
+    const blockNames = {
+        'caocao': '曹操',
+        'zhangfei': '张飞',
+        'zhaoyun': '赵云',
+        'machao': '马超',
+        'huangzhong': '黄忠',
+        'guanyu': '关羽',
+        'soldier1': '兵1',
+        'soldier2': '兵2',
+        'soldier3': '兵3',
+        'soldier4': '兵4'
+    };
+
+    const directionNames = {
+        'up': '上',
+        'down': '下',
+        'left': '左',
+        'right': '右'
+    };
+
+    let stepIndex = 0;
+
+    alert(`🧩 找到最短解决方案！\n\n总共需要 ${solution.length} 步\n\n点击"确定"开始演示，每步间隔500ms`);
+
+    function executeNextStep() {
+        if (!gameState.isAutoSolving || stepIndex >= solution.length) {
+            if (stepIndex >= solution.length) {
+                setTimeout(() => {
+                    alert('🎉 演示完成！已成功将曹操移到底部中间位置。');
+                }, 500);
+            }
+            stopAutoSolve();
+            return;
+        }
+
+        const step = solution[stepIndex];
+        const block = gameState.blocks.find(b => b.id === step.blockId);
+
+        if (block) {
+            // 高亮当前要移动的滑块
+            highlightBlock(block.id);
+
+            // 执行移动（不保存历史，因为这是演示）
+            const oldX = block.x;
+            const oldY = block.y;
+
+            // 直接移动到目标位置
+            block.x = step.newX || block.x;
+            block.y = step.newY || block.y;
+
+            // 根据direction计算新位置
+            const directionMap = {
+                'up': { dx: 0, dy: -1 },
+                'down': { dx: 0, dy: 1 },
+                'left': { dx: -1, dy: 0 },
+                'right': { dx: 1, dy: 0 }
+            };
+
+            const { dx, dy } = directionMap[step.direction];
+            block.x = oldX + dx;
+            block.y = oldY + dy;
+
+            gameState.moves++;
+            updateMovesDisplay();
+            render();
+
+            // 显示当前步骤信息
+            console.log(`步骤 ${stepIndex + 1}: ${blockNames[step.blockId]} → ${directionNames[step.direction]}`);
+
+            stepIndex++;
+
+            // 设置下一步的定时器
+            gameState.autoSolveTimeout = setTimeout(executeNextStep, 500);
+        } else {
+            console.error('找不到滑块:', step.blockId);
+            stepIndex++;
+            gameState.autoSolveTimeout = setTimeout(executeNextStep, 100);
+        }
+    }
+
+    // 开始执行第一步
+    gameState.autoSolveTimeout = setTimeout(executeNextStep, 1000);
+}
+
+function stopAutoSolve() {
+    gameState.isAutoSolving = false;
+
+    if (gameState.autoSolveTimeout) {
+        clearTimeout(gameState.autoSolveTimeout);
+        gameState.autoSolveTimeout = null;
+    }
+
+    clearHighlights();
+    updateButtonStates();
+    render();
+}
+
+function highlightBlock(blockId) {
+    clearHighlights();
+    const blockElement = document.querySelector(`[data-block-id="${blockId}"]`);
+    if (blockElement) {
+        blockElement.classList.add('auto-solving');
+    }
+}
+
+function clearHighlights() {
+    const highlightedBlocks = document.querySelectorAll('.auto-solving');
+    highlightedBlocks.forEach(element => {
+        element.classList.remove('auto-solving');
+    });
+}
+
+function updateButtonStates() {
+    const hintButton = document.querySelector('button[onclick*="showHint"]');
+    const solveButton = document.querySelector('button[onclick*="solveAndShow"]');
+    const resetButton = document.querySelector('button[onclick*="resetGame"]');
+    const undoButton = document.getElementById('undoButton');
+
+    if (gameState.isAutoSolving) {
+        if (hintButton) {
+            hintButton.textContent = '⏹️ 停止演示';
+            hintButton.title = '停止自动演示';
+        }
+        if (solveButton) solveButton.disabled = true;
+        if (resetButton) resetButton.disabled = true;
+        if (undoButton) undoButton.disabled = true;
+    } else {
+        if (hintButton) {
+            hintButton.textContent = '💡 提示';
+            hintButton.title = '自动演示最优解';
+        }
+        if (solveButton) solveButton.disabled = false;
+        if (resetButton) resetButton.disabled = false;
+        updateUndoButton();
+    }
 }
 
 function solveAndShow() {
@@ -429,3 +595,4 @@ document.addEventListener('keydown', handleKeyPress);
 // 初始化游戏
 render();
 updateUndoButton(); // 初始化撤销按钮状态
+updateButtonStates(); // 初始化按钮状态
