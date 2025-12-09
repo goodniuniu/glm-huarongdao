@@ -267,9 +267,10 @@ function updateUndoButton() {
 }
 
 function stateToString(blocks) {
-    // 将滑块状态序列化为字符串键，用于visited集合
+    // 将滑块状态序列化为规范化字符串键，解决状态爆炸问题
+    // 使用 block.type + 坐标，而不是 block.id，将同类棋子视为等效
     return blocks
-        .map(block => `${block.id}:${block.x},${block.y}`)
+        .map(block => `${block.type}:${block.x},${block.y}`)
         .sort()
         .join('|');
 }
@@ -326,6 +327,7 @@ function applyMove(blocks, move) {
 }
 
 function solveGame() {
+    const startTime = performance.now();
     const initialState = deepCopyBlocks(gameState.blocks);
     const initialStateKey = stateToString(initialState);
 
@@ -338,24 +340,21 @@ function solveGame() {
     // visited集合：存储已访问的状态
     const visited = new Set([initialStateKey]);
     let steps = 0;
-    const maxSteps = 10000; // 防止无限循环
+    const maxSteps = 50000; // 增加上限以支持标准华容道求解
 
     console.log('🧩 开始华容道求解...');
-    console.log('初始状态:', initialStateKey);
 
     while (queue.length > 0 && steps < maxSteps) {
         steps++;
 
         // 取出队列头部状态
         const current = queue.shift();
-        const currentStateKey = stateToString(current.blocks);
-
-        console.log(`步骤 ${steps}: 队列大小=${queue.length}, 已访问=${visited.size}`);
 
         // 检查是否达到胜利条件
         if (isVictoryState(current.blocks)) {
-            console.log('🎉 找到解决方案！步骤数:', current.path.length);
-            console.log('解决方案:', current.path);
+            const endTime = performance.now();
+            const duration = ((endTime - startTime) / 1000).toFixed(2);
+            console.log(`🎉 找到解决方案！步骤数: ${current.path.length}, 耗时: ${duration}秒`);
             return current.path;
         }
 
@@ -379,17 +378,15 @@ function solveGame() {
                 });
             }
         }
-
-        // 每隔1000步显示进度
-        if (steps % 1000 === 0) {
-            console.log(`求解进度: ${steps}步, 已探索${visited.size}个状态`);
-        }
     }
 
+    const endTime = performance.now();
+    const duration = ((endTime - startTime) / 1000).toFixed(2);
+
     if (steps >= maxSteps) {
-        console.log('⏱️ 求解超时，已探索10000步');
+        console.log(`⏱️ 求解超时，已探索${maxSteps}步，耗时: ${duration}秒`);
     } else {
-        console.log('❌ 未找到解决方案');
+        console.log(`❌ 未找到解决方案，耗时: ${duration}秒`);
     }
 
     return null; // 未找到解决方案
@@ -462,25 +459,24 @@ function startAutoSolve(solution) {
             // 高亮当前要移动的滑块
             highlightBlock(block.id);
 
-            // 执行移动（不保存历史，因为这是演示）
-            const oldX = block.x;
-            const oldY = block.y;
+            // 直接使用解法步骤中预计算好的坐标
+            // 修复演示逻辑：防止与算法路径不一致
+            if (step.newX !== undefined && step.newY !== undefined) {
+                block.x = step.newX;
+                block.y = step.newY;
+            } else {
+                // 兼容旧格式：根据direction计算新位置
+                const directionMap = {
+                    'up': { dx: 0, dy: -1 },
+                    'down': { dx: 0, dy: 1 },
+                    'left': { dx: -1, dy: 0 },
+                    'right': { dx: 1, dy: 0 }
+                };
 
-            // 直接移动到目标位置
-            block.x = step.newX || block.x;
-            block.y = step.newY || block.y;
-
-            // 根据direction计算新位置
-            const directionMap = {
-                'up': { dx: 0, dy: -1 },
-                'down': { dx: 0, dy: 1 },
-                'left': { dx: -1, dy: 0 },
-                'right': { dx: 1, dy: 0 }
-            };
-
-            const { dx, dy } = directionMap[step.direction];
-            block.x = oldX + dx;
-            block.y = oldY + dy;
+                const { dx, dy } = directionMap[step.direction];
+                block.x += dx;
+                block.y += dy;
+            }
 
             gameState.moves++;
             updateMovesDisplay();
