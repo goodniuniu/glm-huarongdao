@@ -110,9 +110,27 @@ button {
     backdrop-filter: blur(10px);
 }
 
-button:hover {
+button:hover:not(:disabled) {
     background: rgba(52, 152, 219, 1);
     transform: translateY(-2px);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background: rgba(52, 152, 219, 0.5);
+}
+
+button:disabled:hover {
+    transform: none;
+}
+
+#undoButton {
+    background: rgba(241, 196, 15, 0.8);
+}
+
+#undoButton:hover:not(:disabled) {
+    background: rgba(241, 196, 15, 1);
 }
 
 .victory-modal {
