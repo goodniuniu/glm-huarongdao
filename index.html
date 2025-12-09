@@ -12,9 +12,12 @@
         <div class="game-board" id="gameBoard"></div>
         <div class="moves-counter">移动次数: <span id="moves">0</span></div>
         <div class="controls">
-            <button id="undoButton" onclick="undo()" disabled>↶ 回退</button>
+            <button id="undoButton" onclick="undo()" disabled title="撤销 (Ctrl+Z)">↶ 回退</button>
             <button onclick="resetGame()">重新开始</button>
             <button onclick="showHint()">提示</button>
+        </div>
+        <div class="keyboard-hints">
+            <small>快捷键：方向键移动 | Ctrl+Z 撤销</small>
         </div>
     </div>
 

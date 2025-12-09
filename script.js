@@ -134,6 +134,14 @@ function handleBlockClick(blockId) {
 }
 
 function handleKeyPress(e) {
+    // 检查全局撤销快捷键 (Ctrl+Z / Cmd+Z)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
+        return;
+    }
+
+    // 检查是否有选中的滑块
     if (!gameState.selectedBlock) return;
 
     const block = gameState.blocks.find(b => b.id === gameState.selectedBlock);
@@ -250,7 +258,7 @@ function updateUndoButton() {
 }
 
 function showHint() {
-    alert('提示：点击一个滑块选中它，然后点击方向键或再次点击滑块来移动。目标是把曹操（红色大方块）移到底部中间位置。\n\n新功能：点击"↶ 回退"按钮可以撤销上一步操作！');
+    alert('🎮 游戏控制：\n\n• 鼠标点击滑块选中，再次点击移动\n• 方向键控制：↑↓←→ 移动选中的滑块\n• 撤销操作：点击"↶ 回退"按钮 或按 Ctrl+Z (Mac: Cmd+Z)\n• 重新开始：点击"重新开始"按钮\n\n🎯 游戏目标：把曹操（红色大方块）移到底部中间位置！');
 }
 
 // 键盘事件监听

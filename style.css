@@ -170,3 +170,18 @@ button:disabled:hover {
     font-size: 1.2rem;
     color: #ecf0f1;
 }
+
+.keyboard-hints {
+    margin-top: 15px;
+    color: rgba(236, 240, 241, 0.7);
+    font-size: 0.9rem;
+}
+
+.keyboard-hints small {
+    background: rgba(52, 73, 94, 0.5);
+    padding: 6px 12px;
+    border-radius: 15px;
+    display: inline-block;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
