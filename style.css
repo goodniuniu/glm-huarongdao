@@ -84,6 +84,23 @@ h1 {
     }
 }
 
+.block.dragging {
+    opacity: 0.8;
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    border: 3px solid #3498db !important;
+    cursor: grabbing !important;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* 禁用拖拽时的文本选择 */
+.game-board.dragging-active {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
 @keyframes pulse {
     from {
         transform: scale(1);

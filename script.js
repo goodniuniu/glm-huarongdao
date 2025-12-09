@@ -35,7 +35,15 @@ let gameState = {
     moves: 0,
     history: [], // 存储历史状态
     isAutoSolving: false, // 是否正在自动求解
-    autoSolveTimeout: null // 自动求解定时器
+    autoSolveTimeout: null, // 自动求解定时器
+    // 拖拽状态
+    isDragging: false,
+    draggedBlock: null,
+    dragStartX: 0,
+    dragStartY: 0,
+    blockStartX: 0,
+    blockStartY: 0,
+    dragThreshold: 10 // 拖拽阈值（像素）
 };
 
 function isPositionOccupied(x, y, excludeBlockId = null, blocks = gameState.blocks) {
@@ -177,6 +185,178 @@ function handleKeyPress(e) {
     }
 }
 
+// ==================== 拖拽功能 ====================
+
+function getGridPosition(x, y) {
+    const currentGridSize = getCurrentGridSize();
+    return {
+        gridX: Math.floor(x / currentGridSize),
+        gridY: Math.floor(y / currentGridSize)
+    };
+}
+
+function canMoveBlockTo(block, newX, newY) {
+    // 检查边界
+    if (newX < 0 || newY < 0 ||
+        newX + block.width > BOARD_WIDTH ||
+        newY + block.height > BOARD_HEIGHT) {
+        return false;
+    }
+
+    // 检查与其他块的碰撞
+    for (let x = newX; x < newX + block.width; x++) {
+        for (let y = newY; y < newY + block.height; y++) {
+            if (isPositionOccupied(x, y, block.id)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+function handleDragStart(blockId, clientX, clientY) {
+    if (gameState.isAutoSolving) return;
+
+    const block = gameState.blocks.find(b => b.id === blockId);
+    if (!block) return;
+
+    gameState.isDragging = true;
+    gameState.draggedBlock = block;
+    gameState.dragStartX = clientX;
+    gameState.dragStartY = clientY;
+    gameState.blockStartX = block.x;
+    gameState.blockStartY = block.y;
+
+    // 添加拖拽样式
+    const blockElement = document.querySelector(`[data-block-id="${blockId}"]`);
+    if (blockElement) {
+        blockElement.classList.add('dragging');
+        blockElement.style.zIndex = '1000';
+    }
+
+    // 为棋盘添加拖拽状态类
+    const board = document.getElementById('gameBoard');
+    board.classList.add('dragging-active');
+
+    // 移除选中状态
+    gameState.selectedBlock = null;
+    render();
+}
+
+function handleDragMove(clientX, clientY) {
+    if (!gameState.isDragging || !gameState.draggedBlock) return;
+
+    const currentGridSize = getCurrentGridSize();
+    const deltaX = clientX - gameState.dragStartX;
+    const deltaY = clientY - gameState.dragStartY;
+
+    // 计算新的网格位置
+    const newGridX = gameState.blockStartX + Math.round(deltaX / currentGridSize);
+    const newGridY = gameState.blockStartY + Math.round(deltaY / currentGridSize);
+
+    // 检查是否可以移动到新位置
+    if (canMoveBlockTo(gameState.draggedBlock, newGridX, newGridY)) {
+        // 临时更新位置用于视觉反馈
+        const blockElement = document.querySelector(`[data-block-id="${gameState.draggedBlock.id}"]`);
+        if (blockElement) {
+            blockElement.style.left = `${newGridX * currentGridSize}px`;
+            blockElement.style.top = `${newGridY * currentGridSize}px`;
+        }
+    }
+}
+
+function handleDragEnd(clientX, clientY) {
+    if (!gameState.isDragging || !gameState.draggedBlock) return;
+
+    const currentGridSize = getCurrentGridSize();
+    const deltaX = clientX - gameState.dragStartX;
+    const deltaY = clientY - gameState.dragStartY;
+    const newGridX = gameState.blockStartX + Math.round(deltaX / currentGridSize);
+    const newGridY = gameState.blockStartY + Math.round(deltaY / currentGridSize);
+
+    // 检查移动距离是否超过阈值
+    const moveDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (moveDistance > gameState.dragThreshold &&
+        canMoveBlockTo(gameState.draggedBlock, newGridX, newGridY)) {
+
+        // 执行移动
+        saveHistory();
+        gameState.draggedBlock.x = newGridX;
+        gameState.draggedBlock.y = newGridY;
+        gameState.moves++;
+        updateMovesDisplay();
+        checkVictory();
+    }
+
+    // 重置拖拽状态
+    gameState.isDragging = false;
+    gameState.draggedBlock = null;
+
+    // 移除拖拽样式
+    const draggedElement = document.querySelector('.dragging');
+    if (draggedElement) {
+        draggedElement.classList.remove('dragging');
+        draggedElement.style.zIndex = '';
+    }
+
+    // 移除棋盘的拖拽状态类
+    const board = document.getElementById('gameBoard');
+    board.classList.remove('dragging-active');
+
+    render();
+}
+
+// 鼠标事件处理
+function handleMouseDown(e) {
+    const blockId = e.target.getAttribute('data-block-id');
+    if (blockId) {
+        e.preventDefault();
+        handleDragStart(blockId, e.clientX, e.clientY);
+    }
+}
+
+function handleMouseMove(e) {
+    if (gameState.isDragging) {
+        e.preventDefault();
+        handleDragMove(e.clientX, e.clientY);
+    }
+}
+
+function handleMouseUp(e) {
+    if (gameState.isDragging) {
+        e.preventDefault();
+        handleDragEnd(e.clientX, e.clientY);
+    }
+}
+
+// 触摸事件处理
+function handleTouchStart(e) {
+    const blockId = e.target.getAttribute('data-block-id');
+    if (blockId) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handleDragStart(blockId, touch.clientX, touch.clientY);
+    }
+}
+
+function handleTouchMove(e) {
+    if (gameState.isDragging) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handleDragMove(touch.clientX, touch.clientY);
+    }
+}
+
+function handleTouchEnd(e) {
+    if (gameState.isDragging) {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        handleDragEnd(touch.clientX, touch.clientY);
+    }
+}
+
 function render() {
     const board = document.getElementById('gameBoard');
     board.innerHTML = '';
@@ -204,12 +384,26 @@ function render() {
         blockElement.textContent = block.name;
         blockElement.onclick = () => handleBlockClick(block.id);
 
+        // 添加拖拽事件监听器
+        // 鼠标事件
+        blockElement.addEventListener('mousedown', handleMouseDown);
+        // 触摸事件
+        blockElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+
         if (gameState.selectedBlock === block.id) {
             blockElement.classList.add('selected');
         }
 
         board.appendChild(blockElement);
     });
+
+    // 在board上添加全局事件监听器
+    board.addEventListener('mousemove', handleMouseMove);
+    board.addEventListener('mouseup', handleMouseUp);
+    board.addEventListener('mouseleave', handleMouseUp);
+    board.addEventListener('touchmove', handleTouchMove, { passive: false });
+    board.addEventListener('touchend', handleTouchEnd, { passive: false });
+    board.addEventListener('touchcancel', handleTouchEnd, { passive: false });
 }
 
 function adjustColor(color, amount) {
@@ -240,6 +434,19 @@ function resetGame() {
     // 停止自动求解
     if (gameState.isAutoSolving) {
         stopAutoSolve();
+    }
+
+    // 停止拖拽
+    if (gameState.isDragging) {
+        gameState.isDragging = false;
+        gameState.draggedBlock = null;
+
+        // 移除拖拽样式
+        const draggedElement = document.querySelector('.dragging');
+        if (draggedElement) {
+            draggedElement.classList.remove('dragging');
+            draggedElement.style.zIndex = '';
+        }
     }
 
     gameState.moves = 0;
