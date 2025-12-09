@@ -257,8 +257,170 @@ function updateUndoButton() {
     }
 }
 
+function stateToString(blocks) {
+    // 将滑块状态序列化为字符串键，用于visited集合
+    return blocks
+        .map(block => `${block.id}:${block.x},${block.y}`)
+        .sort()
+        .join('|');
+}
+
+function deepCopyBlocks(blocks) {
+    return JSON.parse(JSON.stringify(blocks));
+}
+
+function isVictoryState(blocks) {
+    const caocao = blocks.find(b => b.id === 'caocao');
+    return caocao.x === 1 && caocao.y === 3;
+}
+
+function generateMoves(blocks) {
+    const moves = [];
+    const directions = ['up', 'down', 'left', 'right'];
+
+    for (const block of blocks) {
+        for (const direction of directions) {
+            const directionMap = {
+                'up': { dx: 0, dy: -1 },
+                'down': { dx: 0, dy: 1 },
+                'left': { dx: -1, dy: 0 },
+                'right': { dx: 1, dy: 0 }
+            };
+
+            const { dx, dy } = directionMap[direction];
+            const newX = block.x + dx;
+            const newY = block.y + dy;
+
+            if (canMoveTo(block, newX, newY)) {
+                moves.push({
+                    blockId: block.id,
+                    direction: direction,
+                    newX: newX,
+                    newY: newY
+                });
+            }
+        }
+    }
+
+    return moves;
+}
+
+function applyMove(blocks, move) {
+    const newBlocks = deepCopyBlocks(blocks);
+    const block = newBlocks.find(b => b.id === move.blockId);
+    if (block) {
+        block.x = move.newX;
+        block.y = move.newY;
+    }
+    return newBlocks;
+}
+
+function solveGame() {
+    const initialState = deepCopyBlocks(gameState.blocks);
+    const initialStateKey = stateToString(initialState);
+
+    // BFS队列：存储 {blocks: 状态, path: 移动路径}
+    const queue = [{
+        blocks: initialState,
+        path: []
+    }];
+
+    // visited集合：存储已访问的状态
+    const visited = new Set([initialStateKey]);
+    let steps = 0;
+    const maxSteps = 10000; // 防止无限循环
+
+    console.log('🧩 开始华容道求解...');
+    console.log('初始状态:', initialStateKey);
+
+    while (queue.length > 0 && steps < maxSteps) {
+        steps++;
+
+        // 取出队列头部状态
+        const current = queue.shift();
+        const currentStateKey = stateToString(current.blocks);
+
+        console.log(`步骤 ${steps}: 队列大小=${queue.length}, 已访问=${visited.size}`);
+
+        // 检查是否达到胜利条件
+        if (isVictoryState(current.blocks)) {
+            console.log('🎉 找到解决方案！步骤数:', current.path.length);
+            console.log('解决方案:', current.path);
+            return current.path;
+        }
+
+        // 生成所有可能的移动
+        const possibleMoves = generateMoves(current.blocks);
+
+        for (const move of possibleMoves) {
+            // 应用移动生成新状态
+            const newBlocks = applyMove(current.blocks, move);
+            const newStateKey = stateToString(newBlocks);
+
+            // 如果新状态未被访问过
+            if (!visited.has(newStateKey)) {
+                visited.add(newStateKey);
+                queue.push({
+                    blocks: newBlocks,
+                    path: [...current.path, {
+                        blockId: move.blockId,
+                        direction: move.direction
+                    }]
+                });
+            }
+        }
+
+        // 每隔1000步显示进度
+        if (steps % 1000 === 0) {
+            console.log(`求解进度: ${steps}步, 已探索${visited.size}个状态`);
+        }
+    }
+
+    if (steps >= maxSteps) {
+        console.log('⏱️ 求解超时，已探索10000步');
+    } else {
+        console.log('❌ 未找到解决方案');
+    }
+
+    return null; // 未找到解决方案
+}
+
 function showHint() {
     alert('🎮 游戏控制：\n\n• 鼠标点击滑块选中，再次点击移动\n• 方向键控制：↑↓←→ 移动选中的滑块\n• 撤销操作：点击"↶ 回退"按钮 或按 Ctrl+Z (Mac: Cmd+Z)\n• 重新开始：点击"重新开始"按钮\n\n🎯 游戏目标：把曹操（红色大方块）移到底部中间位置！');
+}
+
+function solveAndShow() {
+    const solution = solveGame();
+
+    if (solution) {
+        const blockNames = {
+            'caocao': '曹操',
+            'zhangfei': '张飞',
+            'zhaoyun': '赵云',
+            'machao': '马超',
+            'huangzhong': '黄忠',
+            'guanyu': '关羽',
+            'soldier1': '兵1',
+            'soldier2': '兵2',
+            'soldier3': '兵3',
+            'soldier4': '兵4'
+        };
+
+        const directionNames = {
+            'up': '上',
+            'down': '下',
+            'left': '左',
+            'right': '右'
+        };
+
+        const solutionText = solution
+            .map((step, index) => `${index + 1}. ${blockNames[step.blockId]} → ${directionNames[step.direction]}`)
+            .join('\n');
+
+        alert(`🧩 找到最短解决方案！\n\n总共需要 ${solution.length} 步：\n\n${solutionText}`);
+    } else {
+        alert('❌ 无法找到解决方案或求解超时。\n\n这可能意味着当前状态无法解决，或者需要更多计算时间。');
+    }
 }
 
 // 键盘事件监听

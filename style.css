@@ -133,6 +133,14 @@ button:disabled:hover {
     background: rgba(241, 196, 15, 1);
 }
 
+button[onclick*="solveAndShow"] {
+    background: rgba(231, 76, 60, 0.8);
+}
+
+button[onclick*="solveAndShow"]:hover {
+    background: rgba(231, 76, 60, 1);
+}
+
 .victory-modal {
     position: fixed;
     top: 0;
