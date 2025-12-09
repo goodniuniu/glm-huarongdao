@@ -27,8 +27,8 @@ let gameState = {
     autoSolveTimeout: null // 自动求解定时器
 };
 
-function isPositionOccupied(x, y, excludeBlockId = null) {
-    return gameState.blocks.some(block =>
+function isPositionOccupied(x, y, excludeBlockId = null, blocks = gameState.blocks) {
+    return blocks.some(block =>
         block.id !== excludeBlockId &&
         x >= block.x &&
         x < block.x + block.width &&
@@ -37,7 +37,7 @@ function isPositionOccupied(x, y, excludeBlockId = null) {
     );
 }
 
-function canMoveTo(block, newX, newY) {
+function canMoveTo(block, newX, newY, blocks = gameState.blocks) {
     // 检查边界
     if (newX < 0 || newY < 0 ||
         newX + block.width > BOARD_WIDTH ||
@@ -48,7 +48,8 @@ function canMoveTo(block, newX, newY) {
     // 检查目标位置是否被占用
     for (let x = newX; x < newX + block.width; x++) {
         for (let y = newY; y < newY + block.height; y++) {
-            if (isPositionOccupied(x, y, block.id)) {
+            // 注意：这里传入了 blocks
+            if (isPositionOccupied(x, y, block.id, blocks)) {
                 return false;
             }
         }
@@ -299,7 +300,8 @@ function generateMoves(blocks) {
             const newX = block.x + dx;
             const newY = block.y + dy;
 
-            if (canMoveTo(block, newX, newY)) {
+            // ⚠️ 修复点：必须将当前的 blocks 传给 canMoveTo
+            if (canMoveTo(block, newX, newY, blocks)) {
                 moves.push({
                     blockId: block.id,
                     direction: direction,
